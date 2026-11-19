@@ -1,0 +1,339 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private university member profile storing display name, university ID, department, portal mode preference, and auto-report preference.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Full name displayed on attendance rosters."
+        },
+        "universityId": {
+          "type": "string",
+          "description": "Optional student or faculty university ID code."
+        },
+        "department": {
+          "type": "string",
+          "description": "Optional academic department."
+        },
+        "portalMode": {
+          "type": "string",
+          "enum": ["student", "teacher"],
+          "description": "Active UI portal preference."
+        },
+        "autoReportEnabled": {
+          "type": "boolean",
+          "description": "Whether real-time GPS auto-reporting is enabled on the student dashboard."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "portalMode",
+        "autoReportEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "Student enrollment link referencing an active university lecture.",
+      "type": "object",
+      "properties": {
+        "lectureId": {
+          "type": "string",
+          "description": "Document ID and join code of the enrolled lecture."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "UID of the teacher owning the lecture."
+        },
+        "courseCode": {
+          "type": "string",
+          "description": "Short university course code."
+        },
+        "title": {
+          "type": "string",
+          "description": "Lecture title."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Campus room or hall label."
+        },
+        "teacherName": {
+          "type": "string",
+          "description": "Display name of the lecturer."
+        },
+        "scheduleLabel": {
+          "type": "string",
+          "description": "Human-readable lecture schedule."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "lectureId",
+        "teacherId",
+        "courseCode",
+        "title",
+        "roomName",
+        "teacherName",
+        "scheduleLabel",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Lecture": {
+      "title": "Lecture",
+      "description": "University lecture with GPS geofence coordinates, radius, join code, and live roll-call session state.",
+      "type": "object",
+      "properties": {
+        "teacherId": {
+          "type": "string",
+          "description": "UID of the lecturer who owns this course."
+        },
+        "teacherName": {
+          "type": "string",
+          "description": "Display name of the lecturer."
+        },
+        "courseCode": {
+          "type": "string",
+          "description": "Course code such as CS-301."
+        },
+        "title": {
+          "type": "string",
+          "description": "Lecture title."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Lecture hall or building room name."
+        },
+        "scheduleLabel": {
+          "type": "string",
+          "description": "Schedule label such as Mon/Wed 10:00 AM."
+        },
+        "joinCode": {
+          "type": "string",
+          "description": "Unique uppercase join code matching the document ID."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude of the lecture hall geofence center."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude of the lecture hall geofence center."
+        },
+        "radiusMeters": {
+          "type": "integer",
+          "description": "Allowed geofence radius in meters."
+        },
+        "sessionStatus": {
+          "type": "string",
+          "enum": ["scheduled", "active", "closed"],
+          "description": "Current roll-call status of the lecture."
+        },
+        "activeSessionNumber": {
+          "type": "integer",
+          "description": "Monotonically increasing session counter."
+        },
+        "autoTrackEnabled": {
+          "type": "boolean",
+          "description": "Whether automatic GPS check-in is enabled for this lecture."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "teacherId",
+        "teacherName",
+        "courseCode",
+        "title",
+        "roomName",
+        "scheduleLabel",
+        "joinCode",
+        "latitude",
+        "longitude",
+        "radiusMeters",
+        "sessionStatus",
+        "activeSessionNumber",
+        "autoTrackEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Real-time GPS attendance or absence report submitted by a student or recorded by a teacher.",
+      "type": "object",
+      "properties": {
+        "lectureId": {
+          "type": "string",
+          "description": "Document ID of the associated lecture."
+        },
+        "courseCode": {
+          "type": "string",
+          "description": "Denormalized course code for display."
+        },
+        "lectureTitle": {
+          "type": "string",
+          "description": "Denormalized lecture title for display."
+        },
+        "roomName": {
+          "type": "string",
+          "description": "Denormalized room name for display."
+        },
+        "sessionNumber": {
+          "type": "integer",
+          "description": "Lecture session number this record belongs to."
+        },
+        "teacherId": {
+          "type": "string",
+          "description": "Denormalized UID of the lecture teacher for authorization."
+        },
+        "studentId": {
+          "type": "string",
+          "description": "UID of the student."
+        },
+        "studentName": {
+          "type": "string",
+          "description": "Display name of the student."
+        },
+        "studentUniversityId": {
+          "type": "string",
+          "description": "Optional student university ID."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["present", "late", "absent", "excused"],
+          "description": "Attendance outcome."
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["pending", "verified", "flagged", "rejected"],
+          "description": "Teacher verification state."
+        },
+        "trackingMode": {
+          "type": "string",
+          "enum": ["auto_gps", "manual_gps", "teacher_marked"],
+          "description": "How this record was generated."
+        },
+        "reportedLatitude": {
+          "type": "number",
+          "description": "Latitude reported by device GPS."
+        },
+        "reportedLongitude": {
+          "type": "number",
+          "description": "Longitude reported by device GPS."
+        },
+        "distanceMeters": {
+          "type": "number",
+          "description": "Calculated distance in meters from the lecture hall."
+        },
+        "accuracyMeters": {
+          "type": "number",
+          "description": "Reported GPS accuracy in meters."
+        },
+        "withinGeofence": {
+          "type": "boolean",
+          "description": "Whether the student's location was inside the lecture geofence."
+        },
+        "teacherNote": {
+          "type": "string",
+          "description": "Optional verification note added by the teacher."
+        },
+        "verifiedBy": {
+          "type": "string",
+          "description": "Optional UID of the teacher who verified the record."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "lectureId",
+        "courseCode",
+        "lectureTitle",
+        "roomName",
+        "sessionNumber",
+        "teacherId",
+        "studentId",
+        "studentName",
+        "status",
+        "verificationStatus",
+        "trackingMode",
+        "reportedLatitude",
+        "reportedLongitude",
+        "distanceMeters",
+        "accuracyMeters",
+        "withinGeofence",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Private university member profiles isolated by owner UID."
+    },
+    "/users/{userId}/enrollments/{lectureId}": {
+      "schema": {
+        "$ref": "#/entities/Enrollment"
+      },
+      "description": "Lectures that a student has enrolled in via join code."
+    },
+    "/lectures/{lectureId}": {
+      "schema": {
+        "$ref": "#/entities/Lecture"
+      },
+      "description": "University lectures created and managed by teachers with GPS geofences."
+    },
+    "/attendance_records/{recordId}": {
+      "schema": {
+        "$ref": "#/entities/AttendanceRecord"
+      },
+      "description": "Real-time GPS attendance and absence reports shared strictly between the reporting student and the lecture's teacher."
+    }
+  }
+}

@@ -1,0 +1,255 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- VALIDATION BLUEPRINTS ---
+
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+             (!('universityId' in data) || data.universityId == null || (data.universityId is string && data.universityId.size() <= 40)) &&
+             (!('department' in data) || data.department == null || (data.department is string && data.department.size() <= 80)) &&
+             data.portalMode is string && data.portalMode in ['student', 'teacher'] &&
+             data.autoReportEnabled is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidEnrollment(data, lectureId) {
+      return data.lectureId is string && data.lectureId == lectureId && isValidId(data.lectureId) &&
+             data.teacherId is string && data.teacherId.size() >= 1 && data.teacherId.size() <= 128 &&
+             data.courseCode is string && data.courseCode.size() >= 2 && data.courseCode.size() <= 20 &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 100 &&
+             data.roomName is string && data.roomName.size() >= 2 && data.roomName.size() <= 80 &&
+             data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 80 &&
+             data.scheduleLabel is string && data.scheduleLabel.size() >= 1 && data.scheduleLabel.size() <= 60 &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidLecture(data) {
+      return data.teacherId is string && data.teacherId.size() >= 1 && data.teacherId.size() <= 128 &&
+             data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 80 &&
+             data.courseCode is string && data.courseCode.size() >= 2 && data.courseCode.size() <= 20 &&
+             data.title is string && data.title.size() >= 2 && data.title.size() <= 100 &&
+             data.roomName is string && data.roomName.size() >= 2 && data.roomName.size() <= 80 &&
+             data.scheduleLabel is string && data.scheduleLabel.size() >= 1 && data.scheduleLabel.size() <= 60 &&
+             data.joinCode is string && data.joinCode.size() >= 4 && data.joinCode.size() <= 24 && data.joinCode.matches('^[A-Z0-9_\\-]+$') &&
+             data.latitude is number && data.latitude >= -90.0 && data.latitude <= 90.0 &&
+             data.longitude is number && data.longitude >= -180.0 && data.longitude <= 180.0 &&
+             data.radiusMeters is int && data.radiusMeters >= 20 && data.radiusMeters <= 2000 &&
+             data.sessionStatus is string && data.sessionStatus in ['scheduled', 'active', 'closed'] &&
+             data.activeSessionNumber is int && data.activeSessionNumber >= 1 && data.activeSessionNumber <= 10000 &&
+             data.autoTrackEnabled is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    function isValidAttendanceRecord(data) {
+      return data.lectureId is string && isValidId(data.lectureId) &&
+             data.courseCode is string && data.courseCode.size() >= 2 && data.courseCode.size() <= 20 &&
+             data.lectureTitle is string && data.lectureTitle.size() >= 2 && data.lectureTitle.size() <= 100 &&
+             data.roomName is string && data.roomName.size() >= 2 && data.roomName.size() <= 80 &&
+             data.sessionNumber is int && data.sessionNumber >= 1 && data.sessionNumber <= 10000 &&
+             data.teacherId is string && data.teacherId.size() >= 1 && data.teacherId.size() <= 128 &&
+             data.studentId is string && data.studentId.size() >= 1 && data.studentId.size() <= 128 &&
+             data.studentName is string && data.studentName.size() >= 1 && data.studentName.size() <= 80 &&
+             (!('studentUniversityId' in data) || data.studentUniversityId == null || (data.studentUniversityId is string && data.studentUniversityId.size() <= 40)) &&
+             data.status is string && data.status in ['present', 'late', 'absent', 'excused'] &&
+             data.verificationStatus is string && data.verificationStatus in ['pending', 'verified', 'flagged', 'rejected'] &&
+             data.trackingMode is string && data.trackingMode in ['auto_gps', 'manual_gps', 'teacher_marked'] &&
+             data.reportedLatitude is number && data.reportedLatitude >= -90.0 && data.reportedLatitude <= 90.0 &&
+             data.reportedLongitude is number && data.reportedLongitude >= -180.0 && data.reportedLongitude <= 180.0 &&
+             data.distanceMeters is number && data.distanceMeters >= 0.0 && data.distanceMeters <= 50000000.0 &&
+             data.accuracyMeters is number && data.accuracyMeters >= 0.0 && data.accuracyMeters <= 10000.0 &&
+             data.withinGeofence is bool &&
+             (!('teacherNote' in data) || data.teacherNote == null || (data.teacherNote is string && data.teacherNote.size() <= 300)) &&
+             (!('verifiedBy' in data) || data.verifiedBy == null || (data.verifiedBy is string && data.verifiedBy.size() <= 128)) &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    // --- COLLECTION 1: PRIVATE USER PROFILES ---
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isValidId(userId) &&
+                       isOwner(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'portalMode', 'autoReportEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'universityId', 'department', 'portalMode', 'autoReportEnabled', 'createdAt', 'updatedAt']) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt <= request.time;
+
+      allow update: if isValidId(userId) &&
+                       isOwner(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt <= request.time &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'universityId', 'department', 'portalMode', 'autoReportEnabled', 'updatedAt']);
+
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // --- SUBCOLLECTION: STUDENT ENROLLMENTS ---
+      match /enrollments/{lectureId} {
+        allow get: if isValidId(userId) && isValidId(lectureId) && isOwner(userId);
+        allow list: if isValidId(userId) && isOwner(userId);
+
+        allow create: if isValidId(userId) &&
+                         isValidId(lectureId) &&
+                         isOwner(userId) &&
+                         incoming().keys().hasAll(['lectureId', 'teacherId', 'courseCode', 'title', 'roomName', 'teacherName', 'scheduleLabel', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['lectureId', 'teacherId', 'courseCode', 'title', 'roomName', 'teacherName', 'scheduleLabel', 'createdAt', 'updatedAt']) &&
+                         isValidEnrollment(incoming(), lectureId) &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt <= request.time &&
+                         exists(/databases/$(database)/documents/lectures/$(lectureId)) &&
+                         get(/databases/$(database)/documents/lectures/$(lectureId)).data.teacherId == incoming().teacherId;
+
+        allow update: if isValidId(userId) &&
+                         isValidId(lectureId) &&
+                         isOwner(userId) &&
+                         isValidEnrollment(incoming(), lectureId) &&
+                         incoming().lectureId == existing().lectureId &&
+                         incoming().teacherId == existing().teacherId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['courseCode', 'title', 'roomName', 'teacherName', 'scheduleLabel', 'updatedAt']);
+
+        allow delete: if isValidId(userId) && isValidId(lectureId) && isOwner(userId);
+      }
+    }
+
+    // --- COLLECTION 2: UNIVERSITY LECTURES ---
+    match /lectures/{lectureId} {
+      // Exact lookup by shareable Join Code (no PII stored on lecture docs)
+      allow get: if isSignedIn() && isValidId(lectureId);
+      // Teachers list strictly their own lectures
+      allow list: if isSignedIn() && existing().teacherId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(lectureId) &&
+                       incoming().teacherId == request.auth.uid &&
+                       incoming().joinCode == lectureId &&
+                       incoming().keys().hasAll(['teacherId', 'teacherName', 'courseCode', 'title', 'roomName', 'scheduleLabel', 'joinCode', 'latitude', 'longitude', 'radiusMeters', 'sessionStatus', 'activeSessionNumber', 'autoTrackEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['teacherId', 'teacherName', 'courseCode', 'title', 'roomName', 'scheduleLabel', 'joinCode', 'latitude', 'longitude', 'radiusMeters', 'sessionStatus', 'activeSessionNumber', 'autoTrackEnabled', 'createdAt', 'updatedAt']) &&
+                       isValidLecture(incoming()) &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt <= request.time;
+
+      allow update: if isSignedIn() &&
+                       isValidId(lectureId) &&
+                       isValidLecture(incoming()) &&
+                       existing().teacherId == request.auth.uid &&
+                       incoming().teacherId == existing().teacherId &&
+                       incoming().joinCode == existing().joinCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         // Action 1: Toggle live roll-call session
+                         incoming().diff(existing()).affectedKeys().hasOnly(['sessionStatus', 'activeSessionNumber', 'updatedAt']) ||
+                         // Action 2: Update lecture details or GPS geofence
+                         incoming().diff(existing()).affectedKeys().hasOnly(['courseCode', 'title', 'roomName', 'scheduleLabel', 'latitude', 'longitude', 'radiusMeters', 'autoTrackEnabled', 'updatedAt'])
+                       );
+
+      allow delete: if isSignedIn() && isValidId(lectureId) && existing().teacherId == request.auth.uid;
+    }
+
+    // --- COLLECTION 3: REAL-TIME ATTENDANCE & ABSENCE RECORDS ---
+    match /attendance_records/{recordId} {
+      allow get: if isSignedIn() &&
+                    isValidId(recordId) &&
+                    (existing().studentId == request.auth.uid || existing().teacherId == request.auth.uid);
+
+      allow list: if isSignedIn() &&
+                     (existing().studentId == request.auth.uid || existing().teacherId == request.auth.uid);
+
+      allow create: if isSignedIn() &&
+                       isValidId(recordId) &&
+                       incoming().keys().hasAll(['lectureId', 'courseCode', 'lectureTitle', 'roomName', 'sessionNumber', 'teacherId', 'studentId', 'studentName', 'status', 'verificationStatus', 'trackingMode', 'reportedLatitude', 'reportedLongitude', 'distanceMeters', 'accuracyMeters', 'withinGeofence', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['lectureId', 'courseCode', 'lectureTitle', 'roomName', 'sessionNumber', 'teacherId', 'studentId', 'studentName', 'studentUniversityId', 'status', 'verificationStatus', 'trackingMode', 'reportedLatitude', 'reportedLongitude', 'distanceMeters', 'accuracyMeters', 'withinGeofence', 'teacherNote', 'verifiedBy', 'createdAt', 'updatedAt']) &&
+                       isValidAttendanceRecord(incoming()) &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         // Actor A: Student automatic or manual GPS report (cannot self-verify)
+                         (
+                           incoming().studentId == request.auth.uid &&
+                           incoming().verificationStatus == 'pending' &&
+                           incoming().trackingMode in ['auto_gps', 'manual_gps'] &&
+                           incoming().status in ['present', 'late', 'absent'] &&
+                           !('verifiedBy' in incoming()) &&
+                           !('teacherNote' in incoming())
+                         ) ||
+                         // Actor B: Teacher direct attendance or absence log
+                         (
+                           incoming().teacherId == request.auth.uid &&
+                           incoming().trackingMode == 'teacher_marked' &&
+                           incoming().verificationStatus in ['verified', 'flagged', 'rejected']
+                         )
+                       ) &&
+                       exists(/databases/$(database)/documents/lectures/$(incoming().lectureId)) &&
+                       get(/databases/$(database)/documents/lectures/$(incoming().lectureId)).data.teacherId == incoming().teacherId;
+
+      allow update: if isSignedIn() &&
+                       isValidId(recordId) &&
+                       isValidAttendanceRecord(incoming()) &&
+                       incoming().lectureId == existing().lectureId &&
+                       incoming().courseCode == existing().courseCode &&
+                       incoming().lectureTitle == existing().lectureTitle &&
+                       incoming().roomName == existing().roomName &&
+                       incoming().sessionNumber == existing().sessionNumber &&
+                       incoming().teacherId == existing().teacherId &&
+                       incoming().studentId == existing().studentId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         // Action 1: Teacher verification, flagging, or status override
+                         (
+                           existing().teacherId == request.auth.uid &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'verificationStatus', 'teacherNote', 'verifiedBy', 'updatedAt'])
+                         ) ||
+                         // Action 2: Student GPS re-sync (locked out once teacher changes verificationStatus from 'pending')
+                         (
+                           existing().studentId == request.auth.uid &&
+                           existing().verificationStatus == 'pending' &&
+                           incoming().verificationStatus == 'pending' &&
+                           incoming().trackingMode in ['auto_gps', 'manual_gps'] &&
+                           incoming().status in ['present', 'late', 'absent'] &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['status', 'trackingMode', 'reportedLatitude', 'reportedLongitude', 'distanceMeters', 'accuracyMeters', 'withinGeofence', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if isSignedIn() && isValidId(recordId) && existing().teacherId == request.auth.uid;
+    }
+  }
+}

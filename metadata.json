@@ -1,0 +1,6 @@
+{
+  "name": "CampusRoll",
+  "description": "Real-time GPS university lecture attendance tracker with a student dashboard and teacher verification portal.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

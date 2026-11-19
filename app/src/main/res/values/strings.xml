@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">CampusRoll</string>
+    <string name="tagline">Real-time university lecture attendance and geofence verification</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="signing_in">Signing in…</string>
+    <string name="nav_student">Student</string>
+    <string name="nav_history">History</string>
+    <string name="nav_teacher">Teacher</string>
+    <string name="join_lecture">Join Lecture</string>
+    <string name="create_lecture">New Lecture</string>
+    <string name="grant_location_permission">Enable Live GPS</string>
+    <string name="sign_out">Sign Out</string>
+</resources>
